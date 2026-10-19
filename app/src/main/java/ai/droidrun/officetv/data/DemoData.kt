@@ -24,7 +24,7 @@ object DemoData {
             SeriesPoint(time.toString(), (160 + 120 * cos((utcHour - 14) * PI / 12)).roundToInt().toDouble())
         }
         return StatsState(
-            CloudSnapshot(CloudStats(1_250, 150, users, 7_500, 12.0, tasks, 1_200, 100), now.toEpochMilli()),
+            CloudSnapshot(CloudStats(1_250, 150, users, 7_500, 12.0, tasks, 100), now.toEpochMilli()),
             StarsSnapshot(2_500, now.toEpochMilli()),
             demo = true,
         )

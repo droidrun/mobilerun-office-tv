@@ -11,7 +11,7 @@ import java.time.Instant
 import java.time.ZoneId
 
 class CalendarReminderTest {
-    private val zone = ZoneId.of("Europe/Amsterdam")
+    private val zone = ZoneId.of("UTC+01:00")
     private val start = Instant.parse("2000-01-15T09:00:00Z")
     private val event = CalendarEvent("Example review", start, start.plusSeconds(1800))
     private fun state(vararg events: CalendarEvent, generatedAt: Instant = start.minusSeconds(300)) =

@@ -29,7 +29,7 @@ class DemoDataTest {
         assertTrue(demo.demo)
         val cloud = requireNotNull(demo.cloud).stats
         val values = listOfNotNull(cloud.usersTotal, cloud.usersNew7d, cloud.runnerSteps7d,
-            cloud.averageSteps7d, cloud.agentTurns7d, cloud.machines7d, demo.stars?.count)
+            cloud.averageSteps7d, cloud.tasks24h, cloud.machines7d, demo.stars?.count)
         assertEquals(7, values.size)
         for (value in values) assertEquals("—", formatNumber(value, demo = demo.demo))
         assertEquals("+— in 7 Tagen", "+${formatNumber(requireNotNull(cloud.usersNew7d), demo = demo.demo)} in 7 Tagen")

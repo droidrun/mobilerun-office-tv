@@ -10,7 +10,7 @@ import java.time.ZoneId
 
 class CalendarTest {
     private val now = Instant.parse("2000-01-15T09:00:00Z")
-    private val zone = ZoneId.of("Europe/Amsterdam")
+    private val zone = ZoneId.of("UTC+01:00")
     private fun event(start: String = "2000-01-15T09:12:00Z", end: String = "2000-01-15T10:00:00Z") =
         CalendarEvent("Example meeting", Instant.parse(start), Instant.parse(end))
     // Constructed synthetic credentials only: never use a real deployment or token in tests.
@@ -71,7 +71,7 @@ class CalendarTest {
     }
 
     @Test fun localTodayFilterDropsEndedYesterdayAndTomorrowAcrossMidnight() {
-        val midnight = Instant.parse("2000-01-15T23:00:00Z") // Jan 16 in Amsterdam.
+        val midnight = Instant.parse("2000-01-15T23:00:00Z") // Jan 16 at UTC+01:00.
         val previous = event("2000-01-15T22:59:00Z", "2000-01-15T23:30:00Z")
         val today = event("2000-01-15T23:00:00Z", "2000-01-16T00:00:00Z")
         val ended = event("2000-01-15T22:00:00Z", "2000-01-15T23:00:00Z")

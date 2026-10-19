@@ -12,13 +12,15 @@ data class CloudStats(
     val runnerSteps7d: Long?,
     val averageSteps7d: Double?,
     val tasksPerHour: List<SeriesPoint>,
-    val agentTurns7d: Long?,
     val machines7d: Long?,
-)
+) {
+    /** Sum of the hourly series; null until the series has loaded. */
+    val tasks24h: Long? get() = tasksPerHour.takeIf { it.isNotEmpty() }?.sumOf { it.count }?.toLong()
+}
 
 object StatsParser {
     private val columns = listOf("users_total", "users_new_7d", "users_per_day", "task_runner_steps_7d",
-        "avg_steps_per_task_7d", "tasks_per_hour_24h", "agent_turns_7d", "machines_provisioned_7d")
+        "avg_steps_per_task_7d", "tasks_per_hour_24h", "machines_provisioned_7d")
 
     fun parse(text: String): CloudStats {
         val root = JSONObject(text)
@@ -40,7 +42,7 @@ object StatsParser {
         return CloudStats(number("users_total")?.toLong(), number("users_new_7d")?.toLong(),
             series("users_per_day"), number("task_runner_steps_7d")?.toLong(),
             number("avg_steps_per_task_7d"), series("tasks_per_hour_24h"),
-            number("agent_turns_7d")?.toLong(), number("machines_provisioned_7d")?.toLong())
+            number("machines_provisioned_7d")?.toLong())
     }
 
     /** Persist only the whitelisted aggregates; never persist the raw endpoint response. */
@@ -49,7 +51,7 @@ object StatsParser {
             points.forEach { put(JSONArray().put(it.time).put(it.count)) }
         }
         val values = listOf(stats.usersTotal, stats.usersNew7d, series(stats.usersPerDay), stats.runnerSteps7d,
-            stats.averageSteps7d, series(stats.tasksPerHour), stats.agentTurns7d, stats.machines7d)
+            stats.averageSteps7d, series(stats.tasksPerHour), stats.machines7d)
         return JSONObject().put("columns", JSONArray(columns)).put("results", JSONArray().put(
             JSONArray().apply { values.forEach { put(it ?: JSONObject.NULL) } },
         ))

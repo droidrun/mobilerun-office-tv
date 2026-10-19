@@ -125,7 +125,7 @@ fun MonoScreen(
                     Row(Modifier.fillMaxWidth()) {
                         StatCell(StatLabels.RUNNER_STEPS, cloud?.runnerSteps7d,
                             cloud?.averageSteps7d?.let { "Ø ${formatNumber(it, demo = stats.demo)} je Task" }, Modifier.weight(1f), demo = stats.demo)
-                        StatCell(StatLabels.AGENT_TURNS, cloud?.agentTurns7d, null, Modifier.weight(1f), demo = stats.demo)
+                        StatCell(StatLabels.TASKS, cloud?.tasks24h, null, Modifier.weight(1f), demo = stats.demo)
                     }
                     Row(Modifier.fillMaxWidth()) {
                         StatCell(StatLabels.MACHINES, cloud?.machines7d, null, Modifier.weight(1f), demo = stats.demo)

@@ -6,7 +6,6 @@
     "task_runner_steps_7d",
     "avg_steps_per_task_7d",
     "tasks_per_hour_24h",
-    "agent_turns_7d",
     "machines_provisioned_7d"
   ],
   "results": [
@@ -235,7 +234,6 @@
           40
         ]
       ],
-      1000,
       100
     ]
   ]

@@ -18,12 +18,12 @@ class LogicTest {
         assertEquals(70L, stats.usersNew7d)
         assertEquals(7000L, stats.runnerSteps7d)
         assertEquals(10.0, stats.averageSteps7d!!, 0.001)
-        assertEquals(1000L, stats.agentTurns7d)
         assertEquals(100L, stats.machines7d)
         assertEquals(30, stats.usersPerDay.size)
         assertEquals(SeriesPoint("2000-01-30", 10.0), stats.usersPerDay.last())
         assertEquals(24, stats.tasksPerHour.size)
         assertEquals(SeriesPoint("2000-01-30T23:00:00Z", 40.0), stats.tasksPerHour.last())
+        assertEquals(600L, stats.tasks24h)
     }
 
     @Test fun columnsAreMappedByNameRegardlessOfOrder() {
@@ -44,6 +44,7 @@ class LogicTest {
         assertNull(stats.averageSteps7d)
         assertNull(stats.runnerSteps7d)
         assertTrue(stats.tasksPerHour.isEmpty())
+        assertNull(stats.tasks24h)
     }
 
     @Test fun persistedAggregatesRoundTripWithoutRawEndpointMetadata() {

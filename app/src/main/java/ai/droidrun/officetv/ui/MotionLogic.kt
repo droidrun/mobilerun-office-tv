@@ -19,7 +19,7 @@ internal object StatLabels {
     const val CALENDAR = "Nächster Termin"
     const val USERS = "Nutzer in der Cloud"
     const val RUNNER_STEPS = "Task Runner Steps · 7 T"
-    const val AGENT_TURNS = "Agents-Antworten · 7 T"
+    const val TASKS = "Tasks · 24 h"
     const val MACHINES = "Cloud-Maschinen · 7 T"
     const val STARS = "GitHub-Stars"
 
@@ -27,7 +27,7 @@ internal object StatLabels {
         CALENDAR -> "Termin"
         USERS -> "Cloud"
         RUNNER_STEPS -> "Steps"
-        AGENT_TURNS -> "Antworten"
+        TASKS -> "Tasks"
         MACHINES -> "Maschinen"
         STARS -> "Stars"
         else -> null
@@ -43,7 +43,7 @@ internal fun carouselStats(stats: StatsState, event: CalendarEvent? = null): Lis
     val cloud = stats.cloud?.stats
     cloud?.usersTotal?.let { add(Stat(StatLabels.USERS, it)) }
     cloud?.runnerSteps7d?.let { add(Stat(StatLabels.RUNNER_STEPS, it)) }
-    cloud?.agentTurns7d?.let { add(Stat(StatLabels.AGENT_TURNS, it)) }
+    cloud?.tasks24h?.let { add(Stat(StatLabels.TASKS, it)) }
     cloud?.machines7d?.let { add(Stat(StatLabels.MACHINES, it)) }
     stats.stars?.let { add(Stat(StatLabels.STARS, it.count)) }
 }

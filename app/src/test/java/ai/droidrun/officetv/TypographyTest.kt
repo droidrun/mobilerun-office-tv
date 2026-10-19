@@ -10,7 +10,7 @@ class TypographyTest {
         listOf(
             Triple(StatLabels.USERS, 14, 19),
             Triple(StatLabels.RUNNER_STEPS, 12, 17),
-            Triple(StatLabels.AGENT_TURNS, 7, 16),
+            Triple(StatLabels.TASKS, 0, 5),
             Triple(StatLabels.MACHINES, 6, 15),
             Triple(StatLabels.STARS, 7, 12),
             Triple(StatLabels.CALENDAR, 9, 15),
