@@ -1,0 +1,13 @@
+{
+  "generatedAt": "2000-01-15T09:00:00Z",
+  "next": {
+    "title": "Example meeting",
+    "start": "2000-01-15T09:30:00Z",
+    "end": "2000-01-15T10:00:00Z"
+  },
+  "then": {
+    "title": "Example planning",
+    "start": "2000-01-15T11:00:00Z",
+    "end": "2000-01-15T11:30:00Z"
+  }
+}

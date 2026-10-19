@@ -1,0 +1,11 @@
+.gradle/
+.kotlin/
+**/build/
+local.properties
+*.apk
+.idea/
+*.iml
+*.jks
+*.keystore
+.DS_Store
+tv-screenshot.png

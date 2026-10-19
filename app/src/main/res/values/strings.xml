@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Mobilerun Office TV</string>
+    <string name="reminder_label">In 1 Min.</string>
+    <string name="accessibility_description">Zeigt den Office-Bildschirm beim Öffnen der Fire-TV-Startseite. Einstellungen, Fire TV Startseite oder langes OK pausieren die Umleitung für 30 Sekunden.</string>
+</resources>
