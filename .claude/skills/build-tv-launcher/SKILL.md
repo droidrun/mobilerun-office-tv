@@ -1,11 +1,11 @@
 ---
 name: build-tv-launcher
-description: How to build a custom home screen / launcher for an Android TV or Fire OS TV from scratch - feasibility probe first, choosing between a real HOME replacement and an accessibility takeover, escape routes, D-pad UI in Compose, screensaver, live data with a narrowly scoped key, memory budget, and on-device verification. Use when starting a new TV launcher, a kiosk/office screen, or porting this one to another TV.
+description: How to build a custom home screen / launcher for an Android TV or Fire OS TV from scratch - feasibility probe first, choosing between a real HOME replacement and an accessibility takeover, escape routes, D-pad UI in Compose, screensaver, live data with a read-only key, memory budget, and on-device verification. Use when starting a new TV launcher, a kiosk/office screen, or porting this one to another TV.
 ---
 
 # Building a TV launcher
 
-This guide is drawn from building `ai.droidrun.officetv` for a Fire OS TV, and from an earlier launcher for a Philips Android TV. The order matters: prove what the device allows before you write the app.
+This guide is drawn from building `ai.droidrun.officetv` for a Fire OS TV. The order matters: prove what the device allows before you write the app.
 
 ## 1. Probe the device first (about 30 minutes, throwaway)
 
@@ -15,7 +15,7 @@ Every TV vendor locks the home screen differently, so answer three questions on 
    - Then press HOME on the real remote.
    - Read `adb logcat` to see who handles the key. On Fire OS, `FireTVKeyPolicyManager` and `PhoneWindowManager` start the Amazon launcher directly.
 2. **Can an accessibility service see HOME?** Use a probe `AccessibilityService` with `flagRequestFilterKeyEvents` that logs `onKeyEvent`.
-   - On the Philips Android TV it saw HOME, so a key redirect works.
+   - On some Android TV devices it sees HOME, so a key redirect works.
    - On Fire OS it never did, because the key is consumed before accessibility filtering.
 3. **Can you react to the vendor home appearing?** In the same probe, log `TYPE_WINDOW_STATE_CHANGED` with package and class names. On Fire OS, `com.amazon.tv.launcher/.ui.HomeActivity_vNext` shows up, so a takeover works.
 
@@ -74,8 +74,8 @@ A `DreamService` (`BIND_DREAM_SERVICE`) can render the same Compose content. Sho
   - Read settings in order from environment, Gradle properties, then untracked `local.properties`. The build/deploy script can source local values from `~/.config/firetv-launcher/env`, outside the repo.
   - Never put `OFFICETV_STATS_URL` in the tracked project `gradle.properties`; use the environment, `~/.gradle/gradle.properties` or untracked `local.properties` instead. Trim surrounding URL whitespace and reject userinfo (credentials) before embedding the URL in an APK.
   - Keep the response contract in a synthetic fixture (`app/src/test/resources/stats-sample.json` here). Configure the public stars source separately with `OFFICETV_GITHUB_REPO` (`owner/name`).
-  - Send `GET OFFICETV_STATS_URL` to the HTTPS stats endpoint with `Authorization: Bearer <stats key>`; do not follow redirects. Stats keys are 16–512 characters from `[A-Za-z0-9._~+/=_-]`, without whitespace or control characters. The response JSON is `{"columns": [names], "results": [[one row of values]]}`; map columns by name, with series values `[[time string, number], …]` (see `app/src/test/resources/stats-sample.json`).
-  - Scope the stats key to the narrowest permission available. Return aggregates only, never personal data or individual records. If the key can reach several endpoints, all of them must be aggregate-only (see the README).
+  - Send `GET OFFICETV_STATS_URL` to the HTTPS stats endpoint with `Authorization: Bearer <stats key>`; do not follow redirects. Stats keys are 16–512 characters from `[A-Za-z0-9._~+/=_-]`, without whitespace or control characters. The response is a JSON object with a `columns` array of names and a `results` array whose first element is one row of values; map columns by name, with series values `[[time string, number], …]` (see `app/src/test/resources/stats-sample.json`).
+  - Use a read-only key for your stats endpoint and keep it aggregate-only (see the [aggregate-only rule](../../../README.md#configuration)).
 - **Get the key onto the TV without putting it in the APK:**
   - An exported receiver protected by `android.permission.DUMP`. Only the ADB shell holds it, so third-party apps cannot send to it.
   - Provision the key through stdin, so it is not in argv or shell history: `adb shell 'read k; am broadcast … --es key "$k"' < keyfile`.
@@ -92,7 +92,7 @@ A `DreamService` (`BIND_DREAM_SERVICE`) can render the same Compose content. Sho
 
 ## 7. Memory and motion budget
 
-TVs have little RAM, and the low-memory killer also takes system UIs you depend on. Ours once killed the AirPlay PIN screen.
+TVs have little RAM, and the low-memory killer also takes system UIs you depend on: low-memory kills can close system dialogs such as the AirPlay PIN screen.
 
 - **Budget:** set a PSS budget (ours is < 100 MB). Measure right after start **and** after 2 minutes, because leaks and per-frame allocations show up later.
 - **Never use** blur, video, large bitmaps or runtime shaders beyond gradients.
@@ -100,7 +100,7 @@ TVs have little RAM, and the low-memory killer also takes system UIs you depend 
 - **Infinite animations:**
   - Keep them small and put each in its own `graphicsLayer()`. Otherwise the whole screen is re-recorded every frame.
   - Cache paths and brushes with `drawWithCache`.
-  - One such mistake took us from 70 MB to 180 MB.
+  - A full-screen redraw per frame can more than double memory use.
 - **Dim with a scrim:** a black rectangle drawn over the content, not layer alpha, which allocates a full-screen offscreen buffer.
 - **Respect a system animator scale of 0** by showing the final states.
 - **Burn-in:** an always-on TV needs protection. Drift the layout a few dp every few minutes and dim it at night.
@@ -120,16 +120,12 @@ adb logcat -d | grep -E 'FATAL|lowmemorykiller|<your tag>'
 
 ## 9. Device and network checklist
 
-- Network ADB may switch off on reboot, as it does on our Fire OS TV. Document how to turn it back on.
-- Router client/AP isolation blocks ADB and AirPlay between Wi-Fi clients. A symptom is that mDNS works but ARP stays incomplete.
+- Network ADB may switch off on reboot on some Fire OS TVs. Document how to turn it back on.
+- Client/AP isolation on the router blocks ADB and AirPlay between Wi-Fi clients. A symptom is that mDNS works but ARP stays incomplete.
 - For optional telemetry and unused-package changes, follow the [TV debloat skill](../tv-debloat/SKILL.md): inventory and owner approval first, protected capabilities, exact local recovery records and post-change verification.
 - Long screen-off and sleep timeouts are system settings (`screen_off_timeout`, `sleep_timeout`). Log the old values before changing them.
 
 ## Calendar integration
 
-The default Google Calendar feeds a token-protected, read-only Apps Script, then a restricted
-HTTPS redirect, `CalendarRepository`, a private last-good snapshot, and home/screensaver.
-Provision the encrypted secret URL with `scripts/tv.sh calendar`; never commit the URL,
-token, account identifiers or real event data. Follow the [calendar integration guide](../../../integrations/google-calendar/README.md)
-for setup, provisioning, trusted transport, rotation and troubleshooting; the
-[setup skill](../google-calendar-setup/SKILL.md) provides the short step-by-step workflow.
+Setup, provisioning, rotation and troubleshooting live in the [setup skill](../google-calendar-setup/SKILL.md)
+and the [calendar integration guide](../../../integrations/google-calendar/README.md); do not repeat them here.

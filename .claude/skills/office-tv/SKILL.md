@@ -11,11 +11,11 @@ Always pass the TV's ADB address as `TV=<address:port>` (prefer the TLS wireless
 
 ## The device and its traps
 
-- Fire OS 8 TV (Android 11, API 30), about 1.7 GB RAM, 4K panel with a 1920x1080 UI.
+- Fire OS 8 TV (Android 11, API 30), a low-RAM Fire TV (under 2 GB) with a 4K panel and a 1920x1080 UI.
 - **Some Fire OS builds turn network ADB off after a reboot.** Re-enable it on the TV under Settings, My Fire TV, Developer options, ADB debugging. `adb connect` then reports "Connection refused" until someone does this.
 - **The first connection from a new computer** shows an "Allow USB debugging" prompt on the TV. Someone must confirm it with the remote.
-- **The Wi-Fi router must not isolate clients.** If ARP to the TV stays `(incomplete)` while mDNS still shows the TV, client/AP isolation is on. Turn off AP/client isolation in the router's LAN settings.
-- **Memory is tight.** Fire OS kills background apps aggressively. The AirPlay PIN screen (`com.apple.airplay.amazon.airplay`) was once killed by the low-memory killer before it could show the PIN. Keep the launcher under 100 MB PSS (`scripts/tv.sh status`).
+- **The Wi-Fi router must not isolate clients.** Client/AP isolation on the router blocks ADB and AirPlay between Wi-Fi clients: if ARP to the TV stays `(incomplete)` while mDNS still shows the TV, turn isolation off in the router's LAN settings.
+- **Memory is tight.** Fire OS kills background apps aggressively, and low-memory kills can close system dialogs such as the AirPlay PIN screen (`com.apple.airplay.amazon.airplay`). Keep the launcher under 100 MB PSS (`scripts/tv.sh status`).
 - **Fire OS updates** can re-enable disabled packages and reset settings. Re-check after an update.
 
 ## Connect
@@ -36,7 +36,7 @@ scripts/tv.sh status      # version, accessibility service, screensaver, PSS
 scripts/tv.sh screenshot  # tv-screenshot.png in the repo root, never commit it
 ```
 
-- `install -r` keeps app data and cached stats. The stats key survives redeploys using the same storage names. When upgrading from a build made before the stats storage rename, provision the key once more with `scripts/tv.sh key`; there is no migration of the old key. The host key file now defaults to `~/.config/firetv-launcher/stats-key` (override with `STATS_KEY_FILE`).
+- `install -r` keeps app data and cached stats. The stats key survives redeploys. The host key file defaults to `~/.config/firetv-launcher/stats-key` (override with `STATS_KEY_FILE`).
 - Build with JDK 17 (`JAVA_HOME`) and an Android SDK with platform 34 (`local.properties` with `sdk.dir`, untracked).
 - Before a PR: `./gradlew testDebugUnitTest lintDebug assembleDebug`, and look at a fresh screenshot from the real TV. Layout and memory problems only show up on the device.
 
@@ -50,9 +50,8 @@ scripts/tv.sh revert  # restore the saved original settings and uninstall
 ```
 
 - **The stats key lives only on the TV**, encrypted in the Android Keystore, and in the owner's local key file. It is never in the repo, the APK or the logs.
-- **Scope the key to running the endpoint configured by `OFFICETV_STATS_URL` only.** Use the narrowest permission the provider supports.
-- **Keep every endpoint the stats key can reach aggregate-only.** If it can reach several endpoints, all of them must return aggregates only, never personal data or individual records.
-- **To rotate:** create a new narrowly scoped stats key, write it to the key file, run `scripts/tv.sh key`, then revoke the old key at the provider. Never paste a key into a chat, an issue or a PR.
+- **Use a read-only key for your stats endpoint** and keep the endpoint aggregate-only; see the [aggregate-only rule](../../../README.md#configuration).
+- **To rotate:** create a new read-only key, write it to the key file, run `scripts/tv.sh key`, then rotate the key on your server. Never paste a key into a chat, an issue or a PR.
 
 ## How the home takeover works (and why)
 
@@ -70,10 +69,9 @@ scripts/tv.sh revert  # restore the saved original settings and uninstall
 - Configure `OFFICETV_STATS_URL` (full HTTPS endpoint URL; default empty) and `OFFICETV_GITHUB_REPO` (`owner/name`; default `droidrun/mobilerun`) at build time. Precedence: environment, Gradle property, untracked `local.properties`. The build/deploy script also sources `~/.config/firetv-launcher/env` before invoking Gradle.
 - Never put `OFFICETV_STATS_URL` in the tracked project `gradle.properties`; use the environment, `~/.gradle/gradle.properties` or untracked `local.properties` instead. Surrounding URL whitespace is trimmed; URLs containing userinfo (credentials) are rejected.
 - `StatsRepository` fetches the configured stats endpoint every 15 min with backoff from 1 min doubling up to 60 min. An empty URL disables cloud polling and displays "Statistik nicht konfiguriert". GitHub stars are fetched every 60 min without auth.
-- Send `GET OFFICETV_STATS_URL` to the HTTPS stats endpoint with `Authorization: Bearer <stats key>`; do not follow redirects. Stats keys are 16–512 characters from `[A-Za-z0-9._~+/=_-]`, without whitespace or control characters. The response JSON is `{"columns": [names], "results": [[one row of values]]}`; series values are `[[time string, number], …]`. See the column names and synthetic data in `app/src/test/resources/stats-sample.json`. Aggregates may lag at the source, so the UI says "Stand HH:mm", not "live".
+- Send `GET OFFICETV_STATS_URL` to the HTTPS stats endpoint with `Authorization: Bearer <stats key>`; do not follow redirects. Stats keys are 16–512 characters from `[A-Za-z0-9._~+/=_-]`, without whitespace or control characters. The response is a JSON object with a `columns` array of names and a `results` array whose first element is one row of values; series values are `[[time string, number], …]`. See the column names and synthetic data in `app/src/test/resources/stats-sample.json`. The UI says "Stand HH:mm", not "live".
 - The parser maps by column name (`columns`), never by position.
-- **To add a stat:** change the configured endpoint query and keep it aggregate-only. Add the column in `StatsParser`, its synthetic sample in the test resources and a cell on the screen.
-- "Geräte laufen gerade" (running devices) is not provided by the current aggregate contract.
+- **To add a stat:** add the column to your stats endpoint (aggregate-only), then in `StatsParser`, its synthetic sample in the test resources and a cell on the screen. The "Tasks · 24 h" tile is the sum of the `tasks_per_hour_24h` series, not a separate column.
 
 ## Design rules
 
@@ -88,7 +86,7 @@ scripts/tv.sh revert  # restore the saved original settings and uninstall
   - Night dimming uses a black scrim, not layer alpha, which would allocate a full-screen offscreen buffer.
   - With the system animator scale at 0, show the final states.
 - **Never use** blur, video or large bitmaps. The burn-in drift (±6 dp every 3 min) and the night dim (22:00–07:00) stay, because the TV is on for hours.
-- **Measure PSS after every visual change:** right after start and again after 2 min. One PR went from 70 MB to 180 MB because of per-frame full-screen redraws.
+- **Measure PSS after every visual change:** right after start and again after 2 min. A full-screen redraw per frame can more than double memory use.
 
 ## Improving power and standby behaviour
 
@@ -126,16 +124,12 @@ unanimated and uses the existing minute clock. A muted “Danach: HH:mm” plus 
 shows the following event. Empty/unreachable states use larger muted text; unconfigured
 calendars stay hidden. The header keeps only the AirPlay readiness pill alongside the
 brand; no mirroring instructions or network name. Only Einstellungen (first/focused)
-and Fire TV Startseite remain in the bottom bar; installed-app discovery is removed.
+and Fire TV Startseite are the only buttons in the bottom bar.
 Verify the two-line title, following event and empty states at 1920×1080, then measure
 PSS immediately and after two minutes, keeping it below 100 MB.
 
-The default Google Calendar feeds a token-protected, read-only Apps Script, then a restricted
-HTTPS redirect, `CalendarRepository`, a private last-good snapshot, and home/screensaver.
-Provision the encrypted secret URL with `scripts/tv.sh calendar`; never commit the URL,
-token, account identifiers or real event data. Follow the [calendar integration guide](../../../integrations/google-calendar/README.md)
-for setup, provisioning, trusted transport, rotation and troubleshooting; the
-[setup skill](../google-calendar-setup/SKILL.md) provides the short step-by-step workflow.
+Setup, provisioning, rotation and troubleshooting live in the [setup skill](../google-calendar-setup/SKILL.md)
+and the [calendar integration guide](../../../integrations/google-calendar/README.md); do not repeat them here.
 
 ## Silent calendar reminders
 

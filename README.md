@@ -5,7 +5,7 @@ It shows a German clock and date, a featured calendar, AirPlay readiness, aggreg
 The same view is available as a non-interactive Android screensaver.
 Intended for a company-owned, sideloaded device; it is not meant for app-store distribution.
 
-Parts adapted from an earlier internal Droidrun TV launcher. Bundled Geist, JetBrains Mono and Instrument Serif Italic fonts
+Bundled Geist, JetBrains Mono and Instrument Serif Italic fonts
 are licensed under SIL OFL 1.1; see `licenses/`. The UI scales from the 1920×1080, 16:9 mockup.
 
 Working with Claude Code? `.claude/skills/build-tv-launcher/SKILL.md` explains how to build a TV launcher like this from scratch; `.claude/skills/office-tv/SKILL.md` collects the device traps, the takeover design, the stats data path, design rules and a debugging checklist.
@@ -48,14 +48,17 @@ OFFICETV_GITHUB_REPO=owner/name
 ```
 
 The app sends `GET OFFICETV_STATS_URL` to one HTTPS stats endpoint with
-`Authorization: Bearer <stats key>` and does not follow redirects. The response JSON is
-`{"columns": [names], "results": [[one row of values]]}`: columns are mapped by name,
-and series values are `[[time string, number], …]`. See the column names and synthetic
-numbers, 30 days and 24 hours in `app/src/test/resources/stats-sample.json`.
-Return aggregates only, never personal data or individual records. Use a
-stats key with the narrowest permission available, scoped to running that endpoint
-only; provision it separately using the owner setup below. Build settings are public
-APK contents and must never contain credentials.
+`Authorization: Bearer <stats key>` and does not follow redirects. The response is a JSON
+object with a `columns` array of names and a `results` array whose first element is one
+row of values: columns are mapped by name, and series values are
+`[[time string, number], …]`. See the column names and synthetic numbers, 30 days and
+24 hours in `app/src/test/resources/stats-sample.json`.
+
+**Aggregate-only rule.** Your stats endpoint must return aggregates only, never personal
+data or individual records. Use a read-only key for that endpoint, and if the key can
+reach other endpoints, they must be aggregate-only too. Provision the key separately
+using the owner setup below. Build settings are public APK contents and must never
+contain credentials.
 
 ## Deploy to the office TV
 
@@ -156,8 +159,7 @@ and **Fire TV Startseite** must open Amazon home. Both stay visible in the fixed
 bar. These are the only two buttons; the launcher does not discover installed apps.
 Einstellungen starts focused.
 
-The TV owner holds the stats key with permission to run the configured aggregate
-endpoint only. Get the key from the owner and store it outside the repo at
+The TV owner holds the read-only stats key for your stats endpoint. Get the key from the owner and store it outside the repo at
 `~/.config/firetv-launcher/stats-key`, readable only by your user. It must
 never be committed. Override the file location with `STATS_KEY_FILE` if needed.
 With `TV` set to a trusted TLS/wired connection:
@@ -240,10 +242,7 @@ The README image slot is `docs/screenshot.png`; only add a verified demo capture
 
 ## Provision or clear the stats key
 
-When upgrading from a build made before the stats storage rename, provision the key
-once more with `scripts/tv.sh key`, even when installing with `install -r`. The renamed
-keystore alias and preferences do not read the previously stored key; no migration is
-performed. The host key file now defaults to `~/.config/firetv-launcher/stats-key`;
+The host key file defaults to `~/.config/firetv-launcher/stats-key`;
 set `STATS_KEY_FILE` to use a different location.
 
 The exported control receiver requires `android.permission.DUMP`, held by the ADB shell/system;
@@ -279,10 +278,6 @@ including across restarts. Offline screens keep the last good values; never-load
 Missing or rejected credentials show only `Stats-Schlüssel fehlt` or `Stats-Schlüssel abgelehnt`.
 Clearing a key preserves aggregate snapshots, but stops authenticated fetching until a key is provided.
 
-**Every endpoint accessible to the stats key must stay aggregate-only.** If the key can
-reach several endpoints, all of them must return aggregates only, never personal data
-or individual records.
-
 AirPlay is marked ready only after `_airplay._tcp` discovery resolves a service to one of the TV's
 own IPv4 addresses. A small “AirPlay bereit” pill is the only AirPlay content on home.
 Discovery stops in `onStop`. The installed AirPlay implementation displays the pairing PIN itself;
@@ -304,7 +299,7 @@ blue countdown/status text and a thin progress bar. The bar fills during the las
 before the start, then shows elapsed meeting time. It uses the existing minute clock
 without animation or another timer. A muted “Danach” line shows the following event.
 Empty/unreachable calendars show a calm, larger muted message; unconfigured calendars
-leave the area clear. AirPlay instructions and installed-app tiles are removed.
+leave the area clear.
 
 With the **Mobilerun Office TV accessibility service enabled** (`scripts/tv.sh enable`),
 the TV shows a large, silent reminder one minute before each of today's upcoming events.
@@ -351,8 +346,8 @@ Verify behavior on the TV as well as with JVM tests and lint. Check both escape
 tiles first, held OK, HOME takeover, reboot persistence, screensaver, featured calendar, real stats,
 offline retained values, AirPlay mirroring with a visible PIN, and total PSS using
 `adb shell dumpsys meminfo ai.droidrun.officetv` (target below 100 MB). Confirm the encrypted-key
-receiver permission and no key exposure in the built APK or logs. An independent security review
-is required for key provisioning/storage; build success does not replace it.
+receiver permission and no key exposure in the built APK or logs. Changes to key handling
+deserve a security-minded review.
 
 ## Screensaver and burn-in protection
 
@@ -361,7 +356,7 @@ a preview using `am start -n com.android.systemui/.Somnambulator`.
 
 The screensaver advances every 20 seconds with a crossfade and a slight upward slide:
 clock and date, cloud users (with new users in seven days), Task Runner Steps,
-Agents-Antworten, Cloud-Maschinen, then GitHub-Stars. Stats that have never loaded
+Tasks · 24 h (the sum of the hourly series), Cloud-Maschinen, then GitHub-Stars. Stats that have never loaded
 are skipped; cached values remain available offline. A blue hairline shows progress
 through the current interval. The interactive home screen keeps its two escape buttons,
 featured calendar and AirPlay readiness pill.
